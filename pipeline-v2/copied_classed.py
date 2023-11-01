@@ -15,9 +15,10 @@ class LC:
         if source not in ["spoc-lc", "ffi-lc", "ffi-only"]:
             raise AttributeError(f"source must be one of ['spoc-lc', 'ffi-lc', 'ffi-only'], input was \"{source}\"")
         self.source = source
-        self.fits = self.get_fits_path()
-        self.times, self.flux, self.flux_err, self.timedel, self.elapsed= self.parse_quality()
-        self.freqs, self.pwrs, self.sigma3 = self.make_pgrm()
+        # Set a lot of variables
+        self.get_fits_path()
+        self.parse_quality()
+        self.make_pgrm()
 
     def get_fits_path(self):
         ''' Using the TIC ID, sector, and source, download the file
@@ -34,7 +35,8 @@ class LC:
         prod = Observations.get_product_list(ob)
         lc = Observations.download_products(prod, productSubGroupDescription="LC")
         fits_path = lc['Local Path'][0]
-        return fits_path
+        self.fits = fits_path
+
 
     def parse_quality(self):
         ''' Read in a fits path, output the times / fluxes
@@ -64,7 +66,13 @@ class LC:
         # Concat bad quality and NaN indexes
         bad_data = np.logical_or(bad_quality, nan_data)
 
-        return tmz[~bad_data], pdc_fluxes[~bad_data], pdc_error[~bad_data], timedel, elapse
+        # Set all of the class variables
+        self.times = tmz[~bad_data]
+        self.flux = pdc_fluxes[~bad_data]
+        self.flux_err = pdc_error[~bad_data]
+        self.timedel = timedel
+        self.elapsed = elapse
+
     
     def make_pgrm(self):
         t = self.times
@@ -91,7 +99,11 @@ class LC:
         # special correction to convert to amplitude
         pwrs = np.sqrt(pwrs) * np.sqrt(4.0 / len(t))
         sigma3 = np.sqrt(sigma3) * np.sqrt(4.0 / len(t))
-        return freqs, pwrs, sigma3
+
+        self.freqs=freqs
+        self.amps=pwrs 
+        self.sigma3=sigma3 
+ 
     
     def make_plots(self):
         f_norm = self.flux/np.nanmedian(self.flux)
@@ -102,7 +114,7 @@ class LC:
         ax1.set_ylabel('amplitude [%]')
         
         # plot prgm
-        ax2.plot(self.freqs, self.pwrs*100, c='black')
+        ax2.plot(self.freqs, self.amps*100, c='black')
         ax2.set_xlabel('Frequency [$\mu$Hz]')
         ax2.set_ylabel('amplitude [%]')
         ax2.hlines(self.sigma3, self.freqs[0].value, self.freqs[-1].value, linestyles='dashed', colors='tab:orange')
@@ -121,14 +133,14 @@ class LC:
     
     def get_stats(self):
         # No variability detected
-        if self.sigma3 > max(self.pwrs*100):
+        if self.sigma3 > max(self.amps*100):
             # Maximum amplitude under one day
-            m1d = max(self.pwrs[np.argwhere(lc.freqs>11.574*u.microhertz)])
+            m1d = max(self.amps[np.argwhere(lc.freqs>11.574*u.microhertz)])
             # Envelope containing 99.7% of the data
             v99 = np.nanpercentile(self.flux/np.nanmedian(self.flux), 99.865) - np.nanpercentile(self.flux/np.nanmedian(self.flux), 0.135)
-            print(f"No variability detected\nm1d: {m1d}\nv99 {v99}")
+            print(f"No variability detected\nm1d: {m1d}\nv99: {v99}")
         else:
-            max_amp = max(self.pwrs)
-            max_freq = self.freqs[np.argwhere(self.pwrs==max_amp)]
+            max_amp = max(self.amps)
+            max_freq = self.freqs[np.argwhere(self.amps==max_amp)]
             max_per = (1/max_freq).to(u.day)
             print(f"Max freq: {max_freq} = {max_per}\n Amp @ max period: {max_amp*100}")
