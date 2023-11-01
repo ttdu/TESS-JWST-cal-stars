@@ -1,0 +1,1 @@
+Nyquist sampling on infrequent samples [Eyer & Bartholdi (1999)](https://doi.org/10.1051/aas:1999102)
