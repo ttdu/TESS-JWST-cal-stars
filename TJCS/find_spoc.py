@@ -8,6 +8,12 @@ from contextlib import redirect_stdout
 import io
 
 def get_spoc_obs(ticid, sector=None):
+    """ Given the TICID of our target, return an astropy table
+    of all matching SPOC-generated light curves
+    Parameters:
+        ticid (int): the numeric ticid (no TIC prefix)
+        sector(int, optional): the desired sector
+    """
     # Get all of the sectors
     with redirect_stdout(io.StringIO()) as f:
         with warnings.catch_warnings():
@@ -24,6 +30,9 @@ def get_spoc_obs(ticid, sector=None):
                 no_bueno = np.bitwise_and(obs['t_exptime']==120, obs['sequence_number']==s)
                 # And get rid of it
                 obs = obs[~no_bueno]
-    if sector:
-        obs = obs[obs['sequence_number']==sector]
-    return obs
+        # if sector is specified, only return those values
+        if sector:
+            obs = obs[obs['sequence_number']==sector]
+        return obs
+    else:
+        print(f"TIC{ticid} has no matching SPOC Observations in MAST.")
