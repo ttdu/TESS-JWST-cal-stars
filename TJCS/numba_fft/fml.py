@@ -52,4 +52,4 @@ def newfft(x, y, ld):
     # consequences of fast_math...
     newamp = amp[np.argwhere(amp!=np.inf).flatten()]
     
-    return newamp
+    return np.nanmax(newamp)
