@@ -7,6 +7,18 @@ def prod_ax0(array):
     """
     return np.array([np.prod(array[:, i]) for i in range(array.shape[1])])
     
+    #assert array.shape[1]==3 #Enable SIMD-Vectorization (adding some performance)
+    # res=np.empty(array.shape[0],dtype=array.dtype)
+    # for i in range(array.shape[0]):
+    #     res[i]=array[i,0]*array[i,1]*array[i,2]
+
+    # return res
+
+    # prod = np.array([0]).astype(np.float64)
+    # for i in range(array.shape[1]):
+    #     np.append(prod, np.array([np.prod(array[:,i])]))
+    # return prod
+    
 @jit
 def add_at(x, a, b):
     """ Replace the default numpy implementation
@@ -52,7 +64,7 @@ def extirpolate(x, y, N, M=4):
     This code is based on the C implementation of spread() presented in
     Numerical Recipes in C, Second Edition (Press et al. 1989; p.583).
     """
-    x, y = map(np.ravel, np.broadcast_arrays(x, y))
+    #x, y = np.map(np.ravel, np.broadcast_arrays(x, y))
 
 
     #N = np.int64(np.max(x) + 0.5 * M + 1)

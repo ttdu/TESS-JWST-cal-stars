@@ -1,6 +1,8 @@
 from numba import jit
 import numpy as np
 
+# Passed memory leak test
+
 @jit()
 def scramble_data(datax, datay, ld):
     # Generate random integers for indices of data

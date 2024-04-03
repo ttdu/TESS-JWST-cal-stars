@@ -54,23 +54,26 @@ def trig_sum(t, h, df, N, f0=0, freq_factor=1, oversampling=5, Mfft=4):
     df *= freq_factor
     f0 *= freq_factor
 
-    if df <= 0:
-        raise ValueError("df must be positive")
+    # if df <= 0:
+    #     raise ValueError("df must be positive")
     #t, h = map(np.ravel, np.broadcast_arrays(t, h))
 
     #if use_fft:
-    Mfft = int(Mfft)
-    if Mfft <= 0:
-        raise ValueError("Mfft must be positive")
+    #Mfft = np.int8(Mfft)
+
+    # if Mfft <= 0:
+    #     raise ValueError("Mfft must be positive")
 
     # required size of fft is the power of 2 above the oversampling rate
     Nfft = my_bitceil(N * oversampling)
     t0 = np.min(t)
 
-    if f0 > 0:
+    # always true
+    # if f0 > 0:
+        
         # numba is unhappy without this
-        j = h.astype(np.complex128)
-        j = j * np.exp(2j*np.pi*f0*(t-t0))
+    j = h.astype(np.complex128)
+    j *= np.exp(2j*np.pi*f0*(t-t0))
     #return j
     #print("prod")
     #print(np.mod((t-t0)*df*Nfft, Nfft))

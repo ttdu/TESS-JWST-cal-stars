@@ -2,6 +2,8 @@ from numba import jit
 import numpy as np
 from numba_fft.trig_sum import trig_sum
 
+# MEMORY LEAKS ORIGINATE HERE
+
 @jit
 def newfft(x, y, ld):
     """Inputs:
@@ -9,20 +11,19 @@ def newfft(x, y, ld):
     y: value of "y", in this case flux
     ld: length of data
     """
-    size = len(y)
     
     # Nyquist frequencies
-    max_f = 1/(2*(max(x)/size))
+    max_f = 1/(2*(max(x)/ld))
     min_f = 2/(max(x))
     df = max_f-min_f
-    Nsamples = int(max(x)*max_f)
+    Nsamples = np.int32(max(x)*max_f)
 
     # w = np.power(noise, -2)
     # w /= np.sum(w)
     # Since we're setting noise to 1, we can just set this value
     w = np.full(len(y), 1/len(y)).astype(np.float64)
     
-    y = y - np.dot(w, y)
+    y -= np.dot(w, y)
 
 
     Sh, Ch = trig_sum(t=x, h=w*y, f0=min_f, df=df, N=Nsamples)
@@ -49,7 +50,11 @@ def newfft(x, y, ld):
     # return the amplitude
     amp = np.sqrt(2*(YC * YC / CC + YS * YS / SS))
 
-    # consequences of fast_math...
-    newamp = amp[np.argwhere(amp!=np.inf).flatten()]
+
+    # let's try deleting stuff?
+    #del w,y,Sh,Ch,S2,C2,S,C,tan_2omega_tau,S2w,C2w,C2,Sw,YC,YS,CC,SS
+
+    # consequences of fast_math... exclude infinity
+    newamp = amp[np.isfinite(amp)]
     
-    return np.nanmax(newamp)
+    return newamp
