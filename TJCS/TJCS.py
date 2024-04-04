@@ -37,6 +37,7 @@ class LC:
 
         # Get the "real" name from simbad
         self.name, self.otype, self.stype = get_name_type(self.ticid)
+        self.make_plots(savefig=True)
 
         
         #if self.stitch:
@@ -108,7 +109,7 @@ class LC:
         self.timedel = max(self.timedel)
         self.elapsed = sum(self.elapsed)
 
-    def make_pgrm(self, sg=False, lse=False):
+    def make_pgrm(self):
         # Nyquist limits
         max_f = (1/(2*self.timedel)).to(u.microhertz)
         min_f = (2/self.elapsed).to(u.microhertz)
@@ -118,7 +119,10 @@ class LC:
         # do PSD lombscargle, get powers
         LS = LombScargle(self.times*u.day, self.fluxnorm, normalization="psd")
         self.pwrs = LS.power(self.freqs)
-        self.amps = 100*np.sqrt(4*self.pwrs/len(self.times))
+        # ignore weird values in the square root
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self.amps = 100*np.sqrt(4*self.pwrs/len(self.times))
 
         # Get the false alarm levels
         #sigmas = np.array([.682689, .954499, .997300])
@@ -157,18 +161,19 @@ class LC:
             ax['C'].axhline(alarm, 0.05, 0.95, c='g')
 
         #ax['C'].legend()
+        if self.isvar:
+            # Only plot a "focused" area around the maximum peak
+            df = 300 * u.microhertz
+            xmin = (self.max_freq-df)/u.microhertz
+            xmax = (self.max_freq+df)/u.microhertz
+            # Lowest/highest limits shouldn't go beyond bounds of data
+            if xmin < 0:
+                xmin = 0
+            if xmax > max(self.freqs)/u.microhertz:
+                xmax = max(self.freqs)/u.microhertz
+            ax['C'].set_xlim(xmin, xmax)
+
         plt.plot()
-        # if self.isvar:
-        #     # Only plot a "focused" area around the maximum peak
-        #     df = 150 * u.microhertz
-        #     xmin = (self.max_freq-df)/u.microhertz
-        #     xmax = (self.max_freq+df)/u.microhertz
-        #     # Lowest/highest limits shouldn't go beyond bounds of data
-        #     if xmin < 0:
-        #         xmin = 0
-        #     if xmax > max(self.freqs)/u.microhertz:
-        #         xmax = max(self.freqs)/u.microhertz
-        #     ax['C'].set_xlim(xmin, xmax)
 
         # Set up period at top
         # def invert(x):
