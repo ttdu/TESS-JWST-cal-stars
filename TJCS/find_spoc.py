@@ -24,15 +24,17 @@ def get_spoc_obs(ticid, sector=None):
         sectors = set(obs['sequence_number'])
         # Go thru the sectors set and remove 120s data where there are duplicate sectors
         for s in sectors:
-            # Check that the sector shows up more than once
+            # Check if the sector shows up more than once
             if sum(obs['sequence_number']==s) > 1:
-                # Get back of tuple of the problem row
-                no_bueno = np.bitwise_and(obs['t_exptime']==120, obs['sequence_number']==s)
-                # And get rid of it
-                obs = obs[~no_bueno]
+                # CHECK THAT THERE IS 20s DATA. sometimes DVT obs are in the mixture, which makes the sector appear more than once
+                if 20 in obs[obs['sequence_number']==s]['t_exptime']:
+                    # Get back of tuple of the problem row
+                    no_bueno = np.bitwise_and(obs['t_exptime']==120, obs['sequence_number']==s)
+                    # And get rid of it
+                    obs = obs[~no_bueno]
         # if sector is specified, only return those values
         if sector:
             obs = obs[obs['sequence_number']==sector]
         return obs
     else:
-        print(f"TIC{ticid} has no matching SPOC Observations in MAST.")
+        print(f"TIC{ticid} has no matching SPOC Observations in MAST.\n")
