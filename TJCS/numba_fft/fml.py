@@ -2,17 +2,16 @@ from numba import jit
 import numpy as np
 from numba_fft.trig_sum import trig_sum
 
-@jit
+@jit(fastmath=True)
 def newfft(x, y, ld):
     """Inputs:
     x: value of "x", in this case time
     y: value of "y", in this case flux
     ld: length of data
     """
-    size = len(y)
     
     # Nyquist frequencies
-    max_f = 1/(2*(max(x)/size))
+    max_f = 1/(2*(max(x)/ld))
     min_f = 2/(max(x))
     df = max_f-min_f
     Nsamples = int(max(x)*max_f)
@@ -22,7 +21,7 @@ def newfft(x, y, ld):
     # Since we're setting noise to 1, we can just set this value
     w = np.full(len(y), 1/len(y)).astype(np.float64)
     
-    y = y - np.dot(w, y)
+    y -= np.dot(w, y)
 
 
     Sh, Ch = trig_sum(t=x, h=w*y, f0=min_f, df=df, N=Nsamples)
