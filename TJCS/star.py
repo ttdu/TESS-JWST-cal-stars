@@ -19,16 +19,18 @@ class Star():
 
             # Query MAST for the spoc obs, sort by sequence number
             self.obs_table = get_spoc_obs(self.ticid)
-            self.obs_table.sort(['sequence_number'])
 
-            # Update the obs_table, split into groups with consecutive sectors
-            self.obsids = self.get_consec_obsids()
-            #self.do_the_thing()
-            for i, consec in enumerate(self.obsids):
-                print(f"starting {i}/{len(self.obsids)}")
-                self.lcs.append(LC(consec, ticid))
+            if self.obs_table:
+                self.obs_table.sort(['sequence_number'])
 
-            self.save()
+                # Update the obs_table, split into groups with consecutive sectors
+                self.obsids = self.get_consec_obsids()
+                #self.do_the_thing()
+                for i, consec in enumerate(self.obsids):
+                    print(f"starting {i}/{len(self.obsids)}")
+                    self.lcs.append(LC(consec, ticid))
+
+                self.save()
 
             
 
