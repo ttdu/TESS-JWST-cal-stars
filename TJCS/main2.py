@@ -2,7 +2,7 @@ import pandas as pd
 import glob
 from star import Star
 
-ids = pd.read_csv("~/Desktop/text.txt")['ID']
+ids = pd.read_csv("~/Desktop/targets.txt")['ID']
 
 done_files = glob.glob("./pkls/*.pkl")
 done_ids = []
