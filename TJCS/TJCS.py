@@ -2,7 +2,7 @@ from astroquery.mast import Observations
 from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
-from astropy.timeseries import LombScargle, TimeSeries
+from astropy.timeseries import LombScargle, TimeSeries, aggregate_downsample
 from numba_fft.main import false_alarms
 from find_spoc import get_spoc_obs
 from vo_magic import get_name_type
@@ -129,7 +129,7 @@ class LC:
         self.alarms = false_alarms(np.array(self.times).astype(np.float64), np.array(self.fluxnorm).astype(np.float64))
         self.alarms = 100*self.alarms
 
-    def make_plots(self, savefig=False):
+    def make_plots(self, savefig=False, bin=False, n_bins=50):
         fig, ax = plt.subplot_mosaic(mosaic=[["A","A"],["C", "B"]], figsize=(12,7), width_ratios=[1,3], dpi=300)
         plt.subplots_adjust(hspace=0.3)
         try:
@@ -148,7 +148,22 @@ class LC:
         ax['A'].set_ylabel("amplitude [%]")
 
         # Folded light curve
-        ax['B'].scatter(ts['time'].value, ts['flux'].value, c='black', s=2, alpha=0.2)
+        if self.max_per < 1*u.day:
+            if self.max_per < 1*u.hour:
+                per = self.max_per.to(u.min)
+            else:
+                per = self.max_per.to(u.hour)
+            self.max_per = per
+        if bin:
+            bs = aggregate_downsample(ts, n_bins=n_bins)
+            time, flux = bs['time_bin_start'].value, bs['flux'].value
+            sz = None
+            alp = 1
+        else:
+            time, flux = ts['time'].value, ts['flux'].value
+            sz = 2
+            alp = 0.2
+        ax['B'].scatter(time, flux, c='black', s=sz, alpha=alp)
         ax['B'].set_xlabel('Days')
         ax['B'].set_ylabel('amplitude [%]')
         ax['B'].text(0.05,0.1, f"Period: {self.max_per:.2f}",bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 5}, transform=ax['B'].transAxes)
