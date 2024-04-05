@@ -27,7 +27,7 @@ class Star():
                 self.obsids = self.get_consec_obsids()
                 #self.do_the_thing()
                 for i, consec in enumerate(self.obsids):
-                    print(f"starting {i+1}/{len(self.obsids)}: doing {len(set(self.obs_table['sequence_number']))} sectors")
+                    print(f"starting {i+1}/{len(self.obsids)}: doing {len(consec)} sectors")
                     t0 = time.time()
                     self.lcs.append(LC(consec, ticid))
                     print(f"took {time.time()-t0:.1f}s\n")
