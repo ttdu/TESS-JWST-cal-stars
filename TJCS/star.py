@@ -7,13 +7,13 @@ import pickle
 
 class Star():
     def __init__(self, ticid=None, load_file=None):
-        print(f"starting {ticid}")
         if not ticid and not load_file:
             print("enter a ticid!!")
             quit()
         if load_file:
             self.load(filename=load_file)
-        else:   
+        else:
+            print(f"starting {ticid}")   
             self.ticid = ticid
             self.lcs = []
 
