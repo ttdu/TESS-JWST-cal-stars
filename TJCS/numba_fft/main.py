@@ -10,7 +10,7 @@ import numpy as np
 def false_alarms(datax, datay, iters=10000):
     ld = len(datax)
     # Get an array of the maximum values of the periodogram
-    maxes = np.array([np.nanmax(newfft(*scramble_data(datax, datay, ld))) for i in range(iters)])
+    maxes = np.array([newfft(*scramble_data(datax, datay, ld)) for i in range(iters)])
     # Get the 1,2,3 sigma values
     sigmas = np.quantile(maxes, [.682689, .954499, .997300])
     return sigmas
