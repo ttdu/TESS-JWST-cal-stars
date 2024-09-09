@@ -4,7 +4,6 @@ from astropy.io import fits
 from astropy.time import Time
 from astropy.timeseries import LombScargle, TimeSeries, aggregate_downsample
 from numba_fft.main import false_alarms
-from find_spoc import get_spoc_obs
 from vo_magic import get_name_type
 
 import matplotlib.pyplot as plt

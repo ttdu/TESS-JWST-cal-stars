@@ -7,6 +7,28 @@ import warnings
 from contextlib import redirect_stdout
 import io
 
+def get_consec_obsids(obs_table, N=1):
+        """ Take the obs_table and determine how many sectors could be stitched.
+        Set "N" to determine the maximum permissible gap between sectors.
+        i.e., only adjacent sectors are allowed for N=1
+        Parameters:
+            obs_table: sorted astropy table of observations
+            N (int): maximum permissible value of difference between sector numbers
+        """
+        # Get list of sectors; obs table is already sorted.
+        # ._get_data() is needed to make this a list numpy can handle
+        sectors = obs_table['sequence_number']._get_data()
+        
+        # Find where sectors are too far apart
+        # +1 to indicate where the next group begins, since
+        # np.diff indicates the last member of the group
+        problem = np.argwhere(np.diff(sectors)>N)+1
+
+        # Split the obs table into lists with consecutive groups
+        obs_tables = np.split(obs_table['obsid'], problem.flatten())
+
+        return obs_tables
+
 def get_spoc_obs(ticid, sector=None):
     """ Given the TICID of our target, return a sorted astropy table
     of all matching SPOC-generated light curves
@@ -41,7 +63,11 @@ def get_spoc_obs(ticid, sector=None):
 
         # return these values sorted by sector
         obs.sort(['sequence_number'])
-        return obs
+
+        # now split tables based on where consecutive sectors are
+        obs_table = get_consec_obsids(obs)
+
+        return obs_table
     
     # if there are no results, return None
     else:
