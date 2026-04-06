@@ -4,7 +4,6 @@ from astropy.io import fits
 from astropy.time import Time
 from astropy.timeseries import LombScargle, TimeSeries, aggregate_downsample
 from numba_fft.main import false_alarms
-from find_spoc import get_spoc_obs
 from vo_magic import get_name_type
 
 import matplotlib.pyplot as plt
@@ -18,18 +17,23 @@ import io
 import warnings
 
 class LC:
-    # Initialize with row of obs_table
+    """Lightcurve object; may hold a single sector or multiple sectors worth
+    of data.
+    """
     def __init__(self, obs, ticid):
         self.obs = obs
         self.ticid = ticid
+        
         # Create some numpy arrays to hold these values
         self.times = np.array([])
         self.fluxnorm = np.array([])
+
         # Create some empty lists to hold these values
         self.sectors = []
         self.timedel = []
         self.elapsed = []
         
+        # download the data, parse it, make periodograms, calculate statistics
         self.get_fits_path()
         self.parse_quality()
         self.make_pgrm()
@@ -39,25 +43,14 @@ class LC:
         self.name, self.otype, self.stype = get_name_type(self.ticid)
         self.make_plots(savefig=True)
 
-        
-        #if self.stitch:
-
-        #self.get_fits_path()
-        # if not self.ob:
-        #     self.ob = get_spoc_obs(ticid, sector)
-        # # Set a lot of variables
-        # self.get_fits_path()
-        # # Get the "real" name from simbad
-        # self.name, self.otype, self.stype = get_name_type(ticid)
-        # if self.fits:
-        #     self.parse_quality()
-        #     self.make_pgrm()
-        #     self.get_stats()
 
     def get_fits_path(self):
         ''' Use the ob to download the file, get the fits path
         '''
+        # get list of product IDs to download
         prod = Observations.get_product_list(self.obs)
+
+        # logic in get_spoc_obs prevents us from getting duplicates here
         prod = Observations.filter_products(prod, productSubGroupDescription=["LC","FAST-LC"])
         if len(prod) == 0:
             self.fits = None
@@ -104,9 +97,13 @@ class LC:
             # Get time, flux, normalized flux
             self.times = np.append(self.times, tmz[~bad_data])
             
+            # keep only the "good" values, convert to normalized flux
             flux = pdc_fluxes[~bad_data]
             self.fluxnorm = np.append(self.fluxnorm, flux/np.nanmedian(flux))
+        
+        # for the nyquist frequency, we need the highest timedel
         self.timedel = max(self.timedel)
+        # total elapsed time is, happily, just a sum
         self.elapsed = sum(self.elapsed)
 
     def make_pgrm(self):
@@ -125,7 +122,6 @@ class LC:
             self.amps = 100*np.sqrt(4*self.pwrs/len(self.times))
 
         # Get the false alarm levels
-        #sigmas = np.array([.682689, .954499, .997300])
         self.alarms = false_alarms(np.array(self.times).astype(np.float64), np.array(self.fluxnorm).astype(np.float64))
         self.alarms = 100*self.alarms
 
@@ -142,18 +138,22 @@ class LC:
             warnings.simplefilter("ignore")
             ts = TimeSeries({"time":Time(self.times, format='mjd'), "flux":(self.fluxnorm-1)*100}).fold(period=self.max_per)
 
-        # Full light curve
+        # Plot A: full, flux-normalized lightcurve, plotted in % amplitudes
         ax['A'].scatter(self.times, (self.fluxnorm-1)*100, c='black', s=2, alpha=0.2)
         ax['A'].set_xlabel("TESS day (BTJD)")
         ax['A'].set_ylabel("amplitude [%]")
 
-        # Folded light curve
+        # Plot B: folded light curve, folded at period with maximum power
+        #
+        # report sensible units for the period
         if self.max_per < 1*u.day:
             if self.max_per < 1*u.hour:
                 per = self.max_per.to(u.min)
             else:
                 per = self.max_per.to(u.hour)
             self.max_per = per
+        
+        # bin down to 50 points by default
         if bin:
             bs = aggregate_downsample(ts, n_bins=n_bins)
             time, flux = bs['time_bin_start'].value, bs['flux'].value
@@ -163,19 +163,19 @@ class LC:
             time, flux = ts['time'].value, ts['flux'].value
             sz = 2
             alp = 0.2
+        # Plot B: actually make the plot
         ax['B'].scatter(time, flux, c='black', s=sz, alpha=alp)
         ax['B'].set_xlabel('Days')
         ax['B'].set_ylabel('amplitude [%]')
         ax['B'].text(0.05,0.1, f"Period: {self.max_per:.2f}",bbox={'facecolor': 'grey', 'alpha': 0.5, 'pad': 5}, transform=ax['B'].transAxes)
 
-        # Periodogram, plotted in % amplitudes
+        # Plot C: periodogram, plotted in % amplitudes
         ax['C'].plot(self.freqs, self.amps, c='black')
         ax['C'].set_xlabel('Frequency [$\mu$Hz]')
         ax['C'].set_ylabel('amplitude [%]')
         for alarm in self.alarms:
             ax['C'].axhline(alarm, 0.05, 0.95, c='g')
 
-        #ax['C'].legend()
         if self.isvar:
             # Only plot a "focused" area around the maximum peak
             df = 300 * u.microhertz
@@ -190,7 +190,8 @@ class LC:
 
         plt.plot()
 
-        # Set up period at top
+        # Set up period at top -- commented out because the inversion
+        # produces a broad range of values (e.g. 0.1, 15, 240) that are not super useful
         # def invert(x):
         #     # 1/x with special treatment of x == 0
         #     x = np.array(x).astype(float)
@@ -201,13 +202,9 @@ class LC:
         # per_ax2 = ax2.secondary_xaxis('top', functions=(invert, invert))
         # per_ax2.set_xticks([1, 0.25])
         # per_ax2.set_xlabel('Period [h]')
+
         if savefig:
-            
-            plt.savefig(f"./testing/{self.tic}-{self.sectors}.png")
-            # if self.isvar:
-            #     plt.savefig(f'./var/{self.tic}-{self.sector}.png')
-            # else:
-            #     plt.savefig(f'./nonvar/{self.tic}-{self.sector}.png')
+            plt.savefig(f"./diagnostic-plots/{self.tic}-{self.sectors}.png")
             plt.close()
 
     def get_stats(self):
@@ -217,24 +214,8 @@ class LC:
         
         # Only mark as variable if we pass the 3 sigma mark
         if np.any(self.amps>self.alarms[2]):
-            # Variability detected
             self.isvar = True
             
-            #self.v95 = (np.nanpercentile(self.fluxnorm, 97.5) - np.nanpercentile(self.fluxnorm, 2.5))*100
-
+        # No variability detected
         else:
-            # No variability detected
             self.isvar = False
-
-
-            # Envelope containing 99.7% of the data
-            #self.v99 = (np.nanpercentile(self.fluxnorm, 99.865) - np.nanpercentile(self.fluxnorm, 0.135))*100
-
-    # def plot_pgrm(self, xmin=0, xmax=None):
-    #     fig, ax = plt.subplots()
-    #     ax.plot(self.freqs, self.amps*100, c='black')
-    #     ax.set_xlabel('Frequency [$\mu$Hz]')
-    #     ax.set_ylabel('amplitude [%]')
-    #     if not xmax:
-    #         xmax = max(self.freqs)/u.microhertz
-    #     ax.set_xlim(xmin, xmax)
