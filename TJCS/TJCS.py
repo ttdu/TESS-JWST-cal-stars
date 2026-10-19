@@ -3,7 +3,7 @@ from astropy import units as u
 from astropy.io import fits
 from astropy.time import Time
 from astropy.timeseries import LombScargle, TimeSeries, aggregate_downsample
-from numba_fft.main import false_alarms
+#from numba_fft.main import false_alarms
 from vo_magic import get_name_type
 
 import matplotlib.pyplot as plt
@@ -35,13 +35,14 @@ class LC:
         
         # download the data, parse it, make periodograms, calculate statistics
         self.get_fits_path()
-        self.parse_quality()
-        self.make_pgrm()
-        self.get_stats()
+        if any(self.fits):
+            self.parse_quality()
+            self.make_pgrm()
+            # self.get_stats()
 
-        # Get the "real" name from simbad
-        self.name, self.otype, self.stype = get_name_type(self.ticid)
-        self.make_plots(savefig=True)
+            # Get the "real" name from simbad
+            # self.name, self.otype, self.stype = get_name_type(self.ticid)
+            # self.make_plots(savefig=True)
 
 
     def get_fits_path(self):
@@ -53,7 +54,8 @@ class LC:
         # logic in get_spoc_obs prevents us from getting duplicates here
         prod = Observations.filter_products(prod, productSubGroupDescription=["LC","FAST-LC"])
         if len(prod) == 0:
-            self.fits = None
+            # Make this a list so we can check this later
+            self.fits = [None]
         else:
             with redirect_stdout(io.StringIO()) as f:
                 with warnings.catch_warnings():
@@ -106,7 +108,7 @@ class LC:
         # total elapsed time is, happily, just a sum
         self.elapsed = sum(self.elapsed)
 
-    def make_pgrm(self):
+    def make_pgrm(self, get_alarms=False):
         # Nyquist limits
         max_f = (1/(2*self.timedel)).to(u.microhertz)
         min_f = (2/self.elapsed).to(u.microhertz)
@@ -122,10 +124,11 @@ class LC:
             self.amps = 100*np.sqrt(4*self.pwrs/len(self.times))
 
         # Get the false alarm levels
-        self.alarms = false_alarms(np.array(self.times).astype(np.float64), np.array(self.fluxnorm).astype(np.float64))
-        self.alarms = 100*self.alarms
+        if get_alarms:
+            self.alarms = false_alarms(datax = self.times, datay = self.fluxnorm)
+            self.alarms = 100*self.alarms
 
-    def make_plots(self, savefig=False, bin=False, n_bins=50):
+    def make_plots(self, savefig=False, bin=True, n_bins=50):
         fig, ax = plt.subplot_mosaic(mosaic=[["A","A"],["C", "B"]], figsize=(12,7), width_ratios=[1,3], dpi=300)
         plt.subplots_adjust(hspace=0.3)
         try:

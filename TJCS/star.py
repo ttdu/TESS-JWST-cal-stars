@@ -39,7 +39,7 @@ class Star():
                 for i, consec in enumerate(self.obs_table):
                     print(f"starting {i+1}/{lot}: doing {len(consec)} sectors")
                     t0 = time.time()
-                    self.lcs.append(LC(consec, ticid))
+                    self.lcs.append(LC(obs=consec, ticid=ticid))
                     print(f"took {time.time()-t0:.1f}s\n")
 
                 self.save()
